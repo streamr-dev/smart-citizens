@@ -3,8 +3,10 @@ const https = require('https');
 var request = require('request');
 
 // Ahoy Hacker, fill in this!
-const STREAM_NAME = 'SMART_CITIZEN';
-
+const STREAM_NAME = process.env.STREAM_NAME
+if (STREAM_NAME === undefined) {
+    throw new Error('Must export environment variable STREAM_NAME');
+}
 const API_KEY = process.env.API_KEY
 if (API_KEY === undefined) {
   throw new Error('Must export environment variable API_KEY');
