@@ -18,6 +18,7 @@
   },
   "homepage": "https://github.com/streamr-dev/data-integration-hackathon#readme",
   "dependencies": {
+    "request": "^2.85.0",
     "streamr-client": "^0.10.2"
   }
 }

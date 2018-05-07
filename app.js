@@ -1,11 +1,25 @@
 const StreamrClient = require('streamr-client');
+const https = require('https');
+var request = require('request');
 
 // Ahoy Hacker, fill in this!
-const STREAM_NAME = 'INSERT_STREAM_NAME_HERE';
+const STREAM_NAME = 'SMART_CITIZEN';
 
 const API_KEY = process.env.API_KEY
 if (API_KEY === undefined) {
   throw new Error('Must export environment variable API_KEY');
+}
+const LONGITUDE = process.env.LONGITUDE
+if (LONGITUDE === undefined) {
+  throw new Error('Must export environment variable LONGITUDE');
+}
+const LATITUDE = process.env.LATITUDE
+if (LATITUDE === undefined) {
+  throw new Error('Must export environment variable LATITUDE');
+}
+const UPDATE_FREQ = process.env.UPDATE_FREQ
+if (UPDATE_FREQ === undefined) {
+  throw new Error('Must export environment variable UPDATE_FREQ');
 }
 
 main().catch(console.error);
@@ -20,35 +34,47 @@ async function main() {
     const stream = await client.getOrCreateStream({
         name: STREAM_NAME
     });
-    console.info("Initialized stream:", stream.id);
 
-    // Generate and produce randomized data to Stream
-    await generateEventAndSend(stream, 0);
+    await getSensorData(stream);
 }
 
-async function generateEventAndSend(stream, i) {
-    const msg = {
-        messageNo: i,
-        someString: randomAlphanumericString(256),
-        temperature: Math.random() * 100 - 50,
-        hypeLevel: Math.random() * 100 - 50,
-        moonLevel: Math.random() * 100000 - 50,
-        isMoon: Math.random() > 0.5
-    };
+async function getSensorData(stream) {
+    request('https://api.smartcitizen.me/v0/devices?near='+LONGITUDE+','+LATITUDE+'&q[kit_id_gteq]=14', function (error, response, body) {
+        if (!error && response.statusCode == 200) {
+            var deviceDatas = JSON.parse(body);
+            sendSensorData(deviceDatas, stream);
+        }
+    });
 
-    await stream.produce(msg);
-    console.info('Event sent:', msg);
-
-    // Send next package in 3 seconds
-    setTimeout(generateEventAndSend.bind(null, stream, i + 1), 3 * 1000);
+    setTimeout(getSensorData.bind(null, stream), UPDATE_FREQ);
 }
 
-function randomAlphanumericString(len) {
-    let charSet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let randomString = '';
-    for (let i = 0; i < len; i++) {
-        let randomPoz = Math.floor(Math.random() * charSet.length);
-        randomString += charSet.substring(randomPoz,randomPoz+1);
+async function sendSensorData(deviceDatas, stream) {
+    await deviceDatas.forEach(function (deviceData) {
+        var owner = deviceData.owner;
+        var location = deviceData.data.location;
+
+        deviceData.data.sensors.forEach(function (sensorData) {
+            extendSensorData(sensorData, deviceData, owner, location);
+
+            stream.produce(sensorData);
+            console.log("Sending data:", sensorData);
+        });
+    });
+}
+
+function extendSensorData(sensorData, kitData, owner, location) {
+    sensorData.kitId = kitData.id;
+    sensorData.kitName = kitData.name;
+
+    if (owner != null) {
+        sensorData.ownerId = owner.id;
+        sensorData.ownerName = owner.username;
+        sensorData.ownerUrl = owner.url;
     }
-    return randomString;
+
+    sensorData.latitude = location.latitude;
+    sensorData.longitude = location.longitude;
+    sensorData.exposure = location.exposure;
+    sensorData.elevation = location.elevation;
 }
