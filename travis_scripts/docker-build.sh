@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-export OWNER=<owner>
-export IMAGE_NAME=<image_name>
+export OWNER=streamr
+export IMAGE_NAME=smart-citizen
 export VCS_REF=`git rev-parse --short HEAD`
 export IMAGE_VERSION=0.2.${TRAVIS_BUILD_NUMBER}
 export QNAME=${OWNER}/${IMAGE_NAME}
